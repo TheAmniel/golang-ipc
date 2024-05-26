@@ -1,8 +1,7 @@
 module github.com/james-barrow/golang-ipc
 
-go 1.15
+go 1.22
 
-require (
-	github.com/Microsoft/go-winio v0.6.1
-	golang.org/x/tools v0.9.1 // indirect
-)
+require github.com/Microsoft/go-winio v0.6.2
+
+require golang.org/x/sys v0.10.0 // indirect

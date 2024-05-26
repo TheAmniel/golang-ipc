@@ -3,8 +3,7 @@ package ipc
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/ecdsa"
-	"crypto/elliptic"
+	"crypto/ecdh"
 	"crypto/rand"
 	"crypto/sha256"
 	"errors"
@@ -13,7 +12,6 @@ import (
 )
 
 func (sc *Server) keyExchange() ([32]byte, error) {
-
 	var shared [32]byte
 
 	priv, pub, err := generateKeys()
@@ -33,10 +31,12 @@ func (sc *Server) keyExchange() ([32]byte, error) {
 		return shared, err
 	}
 
-	b, _ := pubRecvd.Curve.ScalarMult(pubRecvd.X, pubRecvd.Y, priv.D.Bytes())
+	data, err := priv.ECDH(pubRecvd)
+	if err != nil {
+		return shared, err
+	}
 
-	shared = sha256.Sum256(b.Bytes())
-
+	shared = sha256.Sum256(data)
 	return shared, nil
 
 }
@@ -62,33 +62,29 @@ func (cc *Client) keyExchange() ([32]byte, error) {
 		return shared, err
 	}
 
-	b, _ := pubRecvd.Curve.ScalarMult(pubRecvd.X, pubRecvd.Y, priv.D.Bytes())
-
-	shared = sha256.Sum256(b.Bytes())
+	data, err := priv.ECDH(pubRecvd)
+	if err != nil {
+		return shared, err
+	}
+	shared = sha256.Sum256(data)
 
 	return shared, nil
 }
 
-func generateKeys() (*ecdsa.PrivateKey, *ecdsa.PublicKey, error) {
-
-	priva, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+func generateKeys() (*ecdh.PrivateKey, *ecdh.PublicKey, error) {
+	priva, err := ecdh.P384().GenerateKey(rand.Reader)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	puba := &priva.PublicKey
-
-	if !priva.IsOnCurve(puba.X, puba.Y) {
-		return nil, nil, errors.New("keys created arn't on curve")
-	}
+	puba := priva.PublicKey()
 
 	return priva, puba, err
 
 }
 
-func sendPublic(conn net.Conn, pub *ecdsa.PublicKey) error {
-
-	pubSend := publicKeyToBytes(pub)
+func sendPublic(conn net.Conn, pub *ecdh.PublicKey) error {
+	pubSend := pub.Bytes()
 	if pubSend == nil {
 		return errors.New("public key cannot be converted to bytes")
 	}
@@ -101,7 +97,7 @@ func sendPublic(conn net.Conn, pub *ecdsa.PublicKey) error {
 	return nil
 }
 
-func recvPublic(conn net.Conn) (*ecdsa.PublicKey, error) {
+func recvPublic(conn net.Conn) (*ecdh.PublicKey, error) {
 
 	buff := make([]byte, 98)
 	i, err := conn.Read(buff)
@@ -113,33 +109,20 @@ func recvPublic(conn net.Conn) (*ecdsa.PublicKey, error) {
 		return nil, errors.New("public key received isn't valid length")
 	}
 
-	recvdPub := bytesToPublicKey(buff[:i])
+	recvdPub, err := bytesToPublicKey(buff[:i])
 
-	if !recvdPub.IsOnCurve(recvdPub.X, recvdPub.Y) {
-		return nil, errors.New("didn't received valid public key")
+	if err != nil {
+		return nil, err
 	}
 
 	return recvdPub, nil
 }
 
-func publicKeyToBytes(pub *ecdsa.PublicKey) []byte {
-
-	if pub == nil || pub.X == nil || pub.Y == nil {
-		return nil
-	}
-
-	return elliptic.Marshal(elliptic.P384(), pub.X, pub.Y)
-}
-
-func bytesToPublicKey(recvdPub []byte) *ecdsa.PublicKey {
-
+func bytesToPublicKey(recvdPub []byte) (*ecdh.PublicKey, error) {
 	if len(recvdPub) == 0 {
-		return nil
+		return nil, errors.New("didn't received valid public key")
 	}
-
-	x, y := elliptic.Unmarshal(elliptic.P384(), recvdPub)
-	return &ecdsa.PublicKey{Curve: elliptic.P384(), X: x, Y: y}
-
+	return ecdh.P384().NewPublicKey(recvdPub)
 }
 
 func createCipher(shared [32]byte) (*cipher.AEAD, error) {

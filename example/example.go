@@ -7,9 +7,11 @@ import (
 )
 
 func main() {
+	go client()
+	server()
+}
 
-	go server()
-
+func client() {
 	c, err := ipc.StartClient("example1", nil)
 	if err != nil {
 		log.Println(err)
@@ -43,7 +45,6 @@ func main() {
 			break
 		}
 	}
-
 }
 
 func server() {

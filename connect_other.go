@@ -14,9 +14,7 @@ import (
 
 // Server create a unix socket and start listening connections - for unix and linux
 func (s *Server) run() error {
-
-	base := "/tmp/"
-	sock := ".sock"
+	base, sock := "/tmp/", ".sock"
 
 	if err := os.RemoveAll(base + s.name + sock); err != nil {
 		return err
@@ -49,16 +47,10 @@ func (s *Server) run() error {
 
 // Client connect to the unix socket created by the server -  for unix and linux
 func (c *Client) dial() error {
-
-	base := "/tmp/"
-	sock := ".sock"
-
-	startTime := time.Now()
+	base, sock, startTime := "/tmp/", ".sock", time.Now()
 
 	for {
-		
 		if c.timeout != 0 {
-
 			if time.Since(startTime).Seconds() > c.timeout {
 				c.status = Closed
 				return errors.New("timed out trying to connect")
@@ -67,19 +59,12 @@ func (c *Client) dial() error {
 
 		conn, err := net.Dial("unix", base+c.Name+sock)
 		if err != nil {
-
-			if strings.Contains(err.Error(), "connect: no such file or directory") {
-
-			} else if strings.Contains(err.Error(), "connect: connection refused") {
-
-			} else {
+			if !strings.Contains(err.Error(), "connect: no such file or directory") ||
+				!strings.Contains(err.Error(), "connect: connection refused") {
 				c.received <- &Message{Err: err, MsgType: -1}
 			}
-
 		} else {
-
 			c.conn = conn
-
 			err = c.handshake()
 			if err != nil {
 				return err
@@ -89,7 +74,6 @@ func (c *Client) dial() error {
 		}
 
 		time.Sleep(c.retryTimer * time.Second)
-
 	}
 
 }

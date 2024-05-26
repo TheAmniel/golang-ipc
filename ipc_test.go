@@ -857,20 +857,12 @@ func TestClientSendMessage(t *testing.T) {
 }
 
 func TestEncryptionFunctions(t *testing.T) {
-
-	res := publicKeyToBytes(nil)
-	if len(res) != 0 {
-		t.Error("should have returned 0 bytes")
-
-	}
-
 	buff := make([]byte, 0)
 
-	if bytesToPublicKey(buff) != nil {
+	res, _ := bytesToPublicKey(buff)
+	if res != nil {
 		t.Error("should have failed as buff is 0 bytes")
 	}
-
-
 
 }
 
@@ -946,7 +938,7 @@ func TestServerWrongEncrytion(t *testing.T) {
 
 	config := &ServerConfig{Encryption: false}
 
-	sc, err := StartServer("test11", config)
+	sc, err := StartServer("test12", config)
 	if err != nil {
 		t.Error(err)
 	}
@@ -955,7 +947,7 @@ func TestServerWrongEncrytion(t *testing.T) {
 
 	config2 := &ClientConfig{Encryption: true}
 
-	cc, err2 := StartClient("test11", config2)
+	cc, err2 := StartClient("test12", config2)
 	if err2 != nil {
 		t.Error(err)
 	}

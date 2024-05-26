@@ -27,13 +27,11 @@ func StartClient(ipcName string, config *ClientConfig) (*Client, error) {
 	}
 
 	if config == nil {
-
 		cc.timeout = 0
 		cc.retryTimer = time.Duration(20)
 		cc.encryptionReq = true
 
 	} else {
-
 		if config.Timeout < 0 {
 			cc.timeout = 0
 		} else {
@@ -101,14 +99,10 @@ func (c *Client) read() {
 				break
 			}
 
-			if bytesToInt(msgFinal[:4]) == 0 {
-				//  type 0 = control message
-			} else {
+			if bytesToInt(msgFinal[:4]) != 0 {
 				c.received <- &Message{Data: msgFinal[4:], MsgType: bytesToInt(msgFinal[:4])}
 			}
-
 		} else {
-
 			if bytesToInt(msgRecvd[:4]) == 0 {
 				//  type 0 = control message
 			} else {
@@ -119,7 +113,6 @@ func (c *Client) read() {
 }
 
 func (c *Client) readData(buff []byte) bool {
-
 	_, err := io.ReadFull(c.conn, buff)
 	if err != nil {
 		if strings.Contains(err.Error(), "EOF") { // the connection has been closed by the client.
@@ -148,7 +141,6 @@ func (c *Client) readData(buff []byte) bool {
 }
 
 func (c *Client) reconnect() {
-
 	c.status = ReConnecting
 	c.received <- &Message{Status: c.status.String(), MsgType: -1}
 
@@ -165,14 +157,12 @@ func (c *Client) reconnect() {
 
 	c.status = Connected
 	c.received <- &Message{Status: c.status.String(), MsgType: -1}
-
 	go c.read()
 }
 
 // Read - blocking function that receices messages
 // if MsgType is a negative number its an internal message
 func (c *Client) Read() (*Message, error) {
-
 	m, ok := (<-c.received)
 	if !ok {
 		return nil, errors.New("the received channel has been closed")
@@ -205,7 +195,6 @@ func (c *Client) Write(msgType int, message []byte) error {
 	}
 
 	c.toWrite <- &Message{MsgType: msgType, Data: message}
-
 	return nil
 }
 
@@ -214,14 +203,11 @@ func (c *Client) write() {
 	for {
 
 		m, ok := <-c.toWrite
-
 		if !ok {
 			break
 		}
 
-		toSend := intToBytes(m.MsgType)
-
-		writer := bufio.NewWriter(c.conn)
+		toSend, writer := intToBytes(m.MsgType), bufio.NewWriter(c.conn)
 
 		if c.encryption {
 			toSend = append(toSend, m.Data...)
@@ -232,9 +218,7 @@ func (c *Client) write() {
 			}
 			toSend = toSendEnc
 		} else {
-
 			toSend = append(toSend, m.Data...)
-
 		}
 
 		writer.Write(intToBytes(len(toSend)))
@@ -251,7 +235,6 @@ func (c *Client) write() {
 
 // getStatus - get the current status of the connection
 func (c *Client) getStatus() Status {
-
 	return c.status
 }
 
@@ -262,13 +245,11 @@ func (c *Client) StatusCode() Status {
 
 // Status - returns the current connection status as a string
 func (c *Client) Status() string {
-
 	return c.status.String()
 }
 
 // Close - closes the connection
 func (c *Client) Close() {
-
 	c.status = Closing
 
 	if c.conn != nil {

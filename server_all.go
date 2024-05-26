@@ -92,7 +92,6 @@ func (s *Server) acceptLoop() {
 }
 
 func (s *Server) read() {
-
 	bLen := make([]byte, 4)
 
 	for {
@@ -122,16 +121,13 @@ func (s *Server) read() {
 				continue
 			}
 
-			if bytesToInt(msgFinal[:4]) == 0 {
+			if bytesToInt(msgFinal[:4]) != 0 {
 				//  type 0 = control message
-			} else {
 				s.received <- &Message{Data: msgFinal[4:], MsgType: bytesToInt(msgFinal[:4])}
 			}
-
 		} else {
-			if bytesToInt(msgRecvd[:4]) == 0 {
+			if bytesToInt(msgRecvd[:4]) != 0 {
 				//  type 0 = control message
-			} else {
 				s.received <- &Message{Data: msgRecvd[4:], MsgType: bytesToInt(msgRecvd[:4])}
 			}
 		}
@@ -146,7 +142,6 @@ func (s *Server) readData(buff []byte) bool {
 	if err != nil {
 
 		if s.status == Closing {
-
 			s.status = Closed
 			s.received <- &Message{Status: s.status.String(), MsgType: -1}
 			s.received <- &Message{Err: errors.New("server has closed the connection"), MsgType: -1}
@@ -154,7 +149,6 @@ func (s *Server) readData(buff []byte) bool {
 		}
 
 		if err == io.EOF {
-
 			s.status = Disconnected
 			s.received <- &Message{Status: s.status.String(), MsgType: -1}
 			return false
@@ -186,7 +180,6 @@ func (s *Server) Read() (*Message, error) {
 // Write - writes a message to the ipc connection
 // msgType - denotes the type of data being sent. 0 is a reserved type for internal messages and errors.
 func (s *Server) Write(msgType int, message []byte) error {
-
 	if msgType == 0 {
 		return errors.New("message type 0 is reserved")
 	}
@@ -198,7 +191,6 @@ func (s *Server) Write(msgType int, message []byte) error {
 	}
 
 	if s.status == Connected {
-
 		s.toWrite <- &Message{MsgType: msgType, Data: message}
 
 	} else {
@@ -232,9 +224,7 @@ func (s *Server) write() {
 
 			toSend = toSendEnc
 		} else {
-
 			toSend = append(toSend, m.Data...)
-
 		}
 
 		writer.Write(intToBytes(len(toSend)))
@@ -251,13 +241,10 @@ func (s *Server) write() {
 	}
 }
 
-
 // getStatus - get the current status of the connection
 func (s *Server) getStatus() Status {
-
 	return s.status
 }
-
 
 // StatusCode - returns the current connection status
 func (s *Server) StatusCode() Status {
@@ -266,13 +253,11 @@ func (s *Server) StatusCode() Status {
 
 // Status - returns the current connection status as a string
 func (s *Server) Status() string {
-
 	return s.status.String()
 }
 
 // Close - closes the connection
 func (s *Server) Close() {
-
 	s.status = Closing
 
 	if s.listen != nil {
